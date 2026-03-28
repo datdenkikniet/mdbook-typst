@@ -135,6 +135,10 @@ fn book() -> Result<String> {
     serde_json::to_string(&book).context("Failed to serialize book")
 }
 
+fn div_wrap(text: &str) -> String {
+    format!(r#"<div class="typst">{text}</div>"#)
+}
+
 fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> {
     let chapters = items.iter_mut().filter_map(|v| {
         if let BookItem::Chapter(c) = v {
@@ -169,7 +173,7 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> 
                     let text = &content[text_range];
                     let result = world.compile(path, text.to_string());
 
-                    replacements.push((range, result));
+                    replacements.push((range, div_wrap(&result)));
                 }
 
                 Event::Start(Tag::Link {
@@ -204,7 +208,7 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> 
                     };
 
                     let result = world.compile(file, text);
-                    replacements.push((range, result));
+                    replacements.push((range, div_wrap(&result)));
                 }
                 _ => {}
             }

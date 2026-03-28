@@ -6,3 +6,6 @@ language = "en"
 [preprocessor.typst]
 command = "cargo run --release --manifest-path ../mdbook-typst/Cargo.toml"
 auto-download = true
+
+[output.html]
+additional-css = ["typst.css"]
