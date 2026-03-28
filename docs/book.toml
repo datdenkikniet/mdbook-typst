@@ -1,0 +1,8 @@
+[book]
+title = "mdbook-typst"
+authors = ["datdenkikniet"]
+language = "en"
+
+[preprocessor.typst]
+command = "cargo run --release --manifest-path ../mdbook-typst/Cargo.toml"
+auto-download = true

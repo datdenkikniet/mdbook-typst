@@ -1,0 +1,2 @@
+- [`mdbook-typst`](./typst.md)
+    - [The the included typst file](./included.md)
