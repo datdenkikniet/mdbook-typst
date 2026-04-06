@@ -10,10 +10,10 @@ information.
 The aim is to compile all typst code (inline and files) is compiled as if you'd run
 
 ```bash
-typst compile --root "/path/to/book/src/" file.typ --pages 1 --output svg
+typst compile path/to/file.typ --pages 1 --output svg
 ```
 
-and injecting the resulting SVG into the document [inline or with a markdown image link](#inline).
+from the book's source directory, and injecting the resulting SVG into the document [inline or with a markdown image link](#inline).
 
 ## Code blocks
 
