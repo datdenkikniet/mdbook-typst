@@ -44,8 +44,26 @@ The contents of the included typst file can be seen in [this sub-section](./incl
 ## Package support { #package-support }
 
 Packages, as included through the `#import "@preview/name:version"` directive in your typst code, are supported. However,
-the preprocessor will not download packages for you automatically. Instead, you'll have to download the `tar` files, decompress
-them, and place them in the `typst-pkgs` subdirectory of your book root directory manually.
+the preprocessor will not download packages for you automatically by default. To download packages, there are two alternatives
+as described below.
+
+### Automatically installing packages
+
+If you have `wget` and `gunzip` installed and available in your `PATH`, you can set the `preprocessor.typst.auto-download` configuration
+to `true`. If set, the preprocessor will automatically fetch non-downloaded packages from the typst universe during the build process.
+
+If you don't have `wget` and `gunzip` available, or want to download your packages from a different source, set the `preprocessor.typst.auto-download`
+configuration to a string describing the program to execute to perform the download. For each non-downloaded package, that command will be executed,
+with the following arguments:
+
+1. The destination file path of the to-be-downloaded tar file
+2. The package spec for the package to download (e.g. `@preview/name:version`)
+3. The allowed
+
+### Installing packages manually
+
+To install packages manually, you'll have to download the `tar` files, decompress them, and place them in the `typst-pkgs` subdirectory of your book
+root.
 
 If you have and `wget` and `gunzip` installed, the preprocessor can do this for you: simply call `mdbook-typst download <package-version> <target-dir>`.
 
@@ -65,6 +83,15 @@ mkdir book/typst-pkgs/
 # Move the now-decompressed tarball to the correct directory
 mv lilaq-0.6.0.tar book/typst-pkgs/
 ```
+
+### License validation
+
+When using the built-in downloader (either through the CLI or `auto-download = true`), the downloader automatically validates
+that downloaded packages have a license that is configured to be allowed. By default, this configuration is set to
+`["MIT", "MIT OR Apache-2.0"]`.
+
+To allow additional values for the `license` field of downloaded packages, set the `preprocessor.typst.allowed-licenses` configuration
+key to your list of allowed licenses.
 
 ## Using markdown image links instead of inline `svg` data
 

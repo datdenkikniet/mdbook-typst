@@ -26,6 +26,8 @@ struct Config {
     pub package_root: PathBuf,
     #[serde(rename = "svg-dir")]
     pub svg_dir: Option<PathBuf>,
+    #[serde(rename = "allowed-licenses")]
+    pub allowed_licenses: Vec<String>,
 }
 
 impl Default for Config {
@@ -34,6 +36,7 @@ impl Default for Config {
             auto_download: toml::Value::Boolean(false),
             package_root: "typst-pkgs".into(),
             svg_dir: None,
+            allowed_licenses: vec!["MIT".into(), "MIT OR Apache-2.0".into()],
         }
     }
 }
@@ -62,7 +65,7 @@ enum Command {
         /// The name of the package to download from the
         /// typst universe, in @namespace/package:version format.
         package: String,
-        /// The destination folder. Usually `book/typst-pkgs`.
+        /// The destination file. Usually `book/typst-pkgs/my-pkg-version.tar`.
         dest: PathBuf,
         /// Licenses that are accepted.
         #[clap(default_value = "MIT", value_delimiter = ',', short, long, env)]
@@ -131,7 +134,7 @@ fn book() -> Result<String> {
     let world = MdbookWorld::new(
         pkg_root,
         auto_download,
-        vec!["MIT".into(), "MIT OR Apache-2.0".into()],
+        config.allowed_licenses,
         book_source,
     );
 

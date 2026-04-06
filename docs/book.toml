@@ -10,6 +10,7 @@ extra-watch-dirs = [ "../mdbook-typst/src" ]
 command = "cargo run --release --manifest-path ../mdbook-typst/Cargo.toml"
 auto-download = true
 svg-dir = "_typst_generated"
+allowed-licenses = [ "MIT", "MIT OR Apache-2.0" ]
 
 [output.html]
 additional-css = ["typst.css"]
