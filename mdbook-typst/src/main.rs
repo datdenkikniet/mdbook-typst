@@ -17,28 +17,21 @@ mod download;
 mod typst;
 
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 struct Config {
-    #[serde(default = "toml_false", rename = "auto-download")]
+    #[serde(rename = "auto-download")]
     pub auto_download: toml::Value,
-    #[serde(default = "typst_pkgs", rename = "package-root")]
+    #[serde(rename = "package-root")]
     pub package_root: PathBuf,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            auto_download: toml_false(),
-            package_root: typst_pkgs(),
+            auto_download: toml::Value::Boolean(false),
+            package_root: "typst-pkgs".into(),
         }
     }
-}
-
-fn toml_false() -> toml::Value {
-    toml::Value::Boolean(false)
-}
-
-fn typst_pkgs() -> PathBuf {
-    "typst-pkgs".into()
 }
 
 /// If no command is provided, this tool parses mdbook preprocessor input from stdin
