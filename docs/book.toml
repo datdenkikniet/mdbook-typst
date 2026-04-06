@@ -3,6 +3,9 @@ title = "mdbook-typst"
 authors = ["datdenkikniet"]
 language = "en"
 
+[build]
+extra-watch-dirs = [ "../mdbook-typst/src" ]
+
 [preprocessor.typst]
 command = "cargo run --release --manifest-path ../mdbook-typst/Cargo.toml"
 auto-download = true
