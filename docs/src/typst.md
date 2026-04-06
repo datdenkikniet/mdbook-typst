@@ -7,6 +7,14 @@ Currently, two forms are supported: code blocks and autolinks.
 Packages are supported, but slightly differently than how the `typst` CLI does. See [Package support](#package-support) for more
 information.
 
+The aim is to compile all typst code (inline and files) is compiled as if you'd run
+
+```bash
+typst compile --root "/path/to/book/src/" file.typ --pages 1 --output svg
+```
+
+and injecting the resulting SVG into the document [inline or with a markdown image link](#inline).
+
 ## Code blocks
 
 The contents of code blocks whose information line is equal to `typst` are interpreted as typst code and transformed
@@ -39,6 +47,11 @@ For instance, including the file `included.typ` by writing `<typst://included.ty
 
 <typst://included.typ>
 
+and `<typst://nested/nested.typ>` displays like this:
+
+<typst://nested/nested.typ>
+
+
 The contents of the included typst file can be seen in [this sub-section](./included.md)
 
 ## Package support { #package-support }
@@ -58,11 +71,21 @@ with the following arguments:
 
 1. The destination file path of the to-be-downloaded tar file
 2. The package spec for the package to download (e.g. `@preview/name:version`)
-3. The allowed
+3. A list of allowed licenses
 
-### Installing packages manually
+If `preprocessor.typst.auto-download` is set to `my-custom-command.sh`, an example of such a call would look like this (line breaks added for illustration):
 
-To install packages manually, you'll have to download the `tar` files, decompress them, and place them in the `typst-pkgs` subdirectory of your book
+```bash
+my-custom-command.sh \
+    '/path/to/book/typst-pkgs/lilaq-0.6.0.tar' \
+    '@preview/lilaq:0.6.0' \
+    'MIT' \
+    'MIT OR Apache-2.0'
+```
+
+### Manually installing packages
+
+To install packages manually, you'll have to download the `tar.gz` files, decompress them, and place them in the `typst-pkgs` subdirectory of your book
 root.
 
 If you have and `wget` and `gunzip` installed, the preprocessor can do this for you: simply call `mdbook-typst download <package-version> <target-dir>`.
@@ -93,7 +116,7 @@ that downloaded packages have a license that is configured to be allowed. By def
 To allow additional values for the `license` field of downloaded packages, set the `preprocessor.typst.allowed-licenses` configuration
 key to your list of allowed licenses.
 
-## Using markdown image links instead of inline `svg` data
+## Using markdown image links instead of inline `svg` data { #linking }
 
 By default, the preprocessor replaces your typst with inline SVG data in the output markdown. However, it also
 supports using image links instead of inline-data if you wish.

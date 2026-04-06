@@ -1,2 +1,3 @@
 - [`mdbook-typst`](./typst.md)
+    - [Nested files](./nested/nested.md)
     - [The the included typst file](./included.md)

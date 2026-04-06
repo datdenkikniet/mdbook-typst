@@ -112,8 +112,14 @@ impl BookWorldInner<'_> {
         } else if FileId::new(None, VirtualPath::new(self.source_path)) == id {
             Ok(File::Source(self.source_contents.to_string()))
         } else {
+            // A rootless path is always relative to the
+            // compilation source
             let file_path = id.vpath().as_rootless_path();
-            let path = self.book_source.join(file_path).normalize();
+            let path = self.book_source.join(file_path);
+
+            // Normalize the path to ensure we're not trying
+            // to read data outside of our source.
+            let path = path.normalize();
 
             if !path.starts_with(self.book_source) {
                 return Err(FileError::AccessDenied);

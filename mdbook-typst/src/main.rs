@@ -190,9 +190,36 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem], linker: &Linke
                     };
 
                     let file = Path::new(file);
-                    let full_path = world.book_source.join(file);
 
-                    let text = match std::fs::read_to_string(full_path) {
+                    let full_path = if file.is_absolute() {
+                        // If the file is absolute, calculate its path relative to the
+                        // book's source.
+                        let mut current_path = world.book_source.clone();
+
+                        // .skip(1) to ignore the leading absolute-separator
+                        for component in file.components().skip(1) {
+                            current_path.push(component);
+                        }
+
+                        current_path
+                    } else {
+                        // First, build a PathBuf that contains the path of the
+                        // directory of the current markdown file.
+                        let mut current_path = world.book_source.clone();
+                        let mut components = path.components().peekable();
+
+                        while let Some(component) = components.next() {
+                            if components.peek().is_some() {
+                                current_path.push(component);
+                            }
+                        }
+
+                        // Then, append the relative path that we obtained
+                        // to it.
+                        current_path.join(file)
+                    };
+
+                    let text = match std::fs::read_to_string(&full_path) {
                         Ok(v) => v,
                         Err(e) => {
                             if e.kind() == ErrorKind::NotFound {
@@ -210,6 +237,8 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem], linker: &Linke
                             }
                         }
                     };
+
+                    let file = full_path.strip_prefix(&world.book_source).unwrap();
 
                     let svg = world.compile(file, &text);
                     let replacement = linker.replace(&path, &text, svg)?;
