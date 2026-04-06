@@ -65,3 +65,26 @@ mkdir book/typst-pkgs/
 # Move the now-decompressed tarball to the correct directory
 mv lilaq-0.6.0.tar book/typst-pkgs/
 ```
+
+## Using markdown image links instead of inline `svg` data
+
+By default, the preprocessor replaces your typst with inline SVG data in the output markdown. However, it also
+supports using image links instead of inline-data if you wish.
+
+To enable this behaviour, you must set the `preprocessor.typst.svg-dir` value in your `book.toml` to the path
+to a subdirectory in your book source. Additionally, you must add that directory to the `.gitignore` in your
+book's root to prevent `mdbook serve` from rebuilding the project infinitely.
+
+For example
+
+```
+# book.toml
+[preprocessor.typst]
+svg-dir = "_typst_generated"
+```
+
+```
+# .gitignore
+book
+src/_typst_generated/
+```

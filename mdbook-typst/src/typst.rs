@@ -56,7 +56,7 @@ impl MdbookWorld {
         done
     }
 
-    pub fn compile(&self, source_path: &Path, source_contents: String) -> String {
+    pub fn compile(&self, source_path: &Path, source_contents: &str) -> String {
         let world = BookWorldInner {
             pkg_root: &self.pkg_root,
             library: &self.library,
@@ -86,7 +86,7 @@ struct BookWorldInner<'a> {
     pkg_root: &'a Path,
     book_source: &'a Path,
     source_path: &'a Path,
-    source_contents: String,
+    source_contents: &'a str,
     auto_download: Option<&'a AutoDownload>,
     allowed_licenses: &'a [String],
 }
@@ -110,7 +110,7 @@ impl BookWorldInner<'_> {
 
             find_in_tar(&tar, package, id.vpath()).map(File::Data)
         } else if FileId::new(None, VirtualPath::new(self.source_path)) == id {
-            Ok(File::Source(self.source_contents.clone()))
+            Ok(File::Source(self.source_contents.to_string()))
         } else {
             let file_path = id.vpath().as_rootless_path();
             let path = self.book_source.join(file_path).normalize();

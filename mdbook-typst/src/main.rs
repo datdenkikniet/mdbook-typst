@@ -11,9 +11,10 @@ use anyhow::{Context, Result};
 use pulldown_cmark::{CodeBlockKind, Event, LinkType, Parser, Tag, TagEnd};
 use serde::Deserialize;
 
-use crate::{download::AutoDownload, typst::MdbookWorld};
+use crate::{download::AutoDownload, linker::Linker, typst::MdbookWorld};
 
 mod download;
+mod linker;
 mod typst;
 
 #[derive(Debug, Deserialize)]
@@ -23,6 +24,8 @@ struct Config {
     pub auto_download: toml::Value,
     #[serde(rename = "package-root")]
     pub package_root: PathBuf,
+    #[serde(rename = "svg-dir")]
+    pub svg_dir: Option<PathBuf>,
 }
 
 impl Default for Config {
@@ -30,6 +33,7 @@ impl Default for Config {
         Self {
             auto_download: toml::Value::Boolean(false),
             package_root: "typst-pkgs".into(),
+            svg_dir: None,
         }
     }
 }
@@ -109,6 +113,12 @@ fn book() -> Result<String> {
     let pkg_root = ctx.root.join(config.package_root);
     let book_source = ctx.root.join(&ctx.config.book.src);
 
+    let linker = if let Some(svg_dir) = config.svg_dir {
+        Linker::new_in_source(&ctx.config.book.src, &svg_dir).context("failed to create linker")?
+    } else {
+        Linker::new_inline()
+    };
+
     let auto_download = match config.auto_download {
         toml::Value::String(v) => Some(AutoDownload::Custom(v)),
         toml::Value::Boolean(true) => Some(AutoDownload::BuiltIn),
@@ -124,15 +134,12 @@ fn book() -> Result<String> {
         vec!["MIT".into(), "MIT OR Apache-2.0".into()],
         book_source,
     );
-    replace_typst(&world, &mut book.items)?;
+
+    replace_typst(&world, &mut book.items, &linker)?;
     serde_json::to_string(&book).context("Failed to serialize book")
 }
 
-fn div_wrap(text: &str) -> String {
-    format!(r#"<div class="typst">{text}</div>"#)
-}
-
-fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> {
+fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem], linker: &Linker) -> Result<()> {
     let chapters = items.iter_mut().filter_map(|v| {
         if let BookItem::Chapter(c) = v {
             Some(c)
@@ -164,9 +171,10 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> 
                     }
 
                     let text = &content[text_range];
-                    let result = world.compile(path, text.to_string());
+                    let svg = world.compile(path, text);
+                    let replacement = linker.replace(&path, text, svg)?;
 
-                    replacements.push((range, div_wrap(&result)));
+                    replacements.push((range, replacement));
                 }
 
                 Event::Start(Tag::Link {
@@ -200,8 +208,10 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> 
                         }
                     };
 
-                    let result = world.compile(file, text);
-                    replacements.push((range, div_wrap(&result)));
+                    let svg = world.compile(file, &text);
+                    let replacement = linker.replace(&path, &text, svg)?;
+
+                    replacements.push((range, replacement));
                 }
                 _ => {}
             }
@@ -220,7 +230,7 @@ fn replace_typst<'a>(world: &MdbookWorld, items: &mut [BookItem]) -> Result<()> 
 
         chapter.content = output;
 
-        replace_typst(world, &mut chapter.sub_items)?;
+        replace_typst(world, &mut chapter.sub_items, linker)?;
     }
 
     Ok(())

@@ -9,6 +9,7 @@ extra-watch-dirs = [ "../mdbook-typst/src" ]
 [preprocessor.typst]
 command = "cargo run --release --manifest-path ../mdbook-typst/Cargo.toml"
 auto-download = true
+svg-dir = "_typst_generated"
 
 [output.html]
 additional-css = ["typst.css"]
