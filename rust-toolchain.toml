@@ -1,0 +1,11 @@
+# Every time this file is updated, *remember* to
+#
+# - update the sha256 for `fenix.fromToolchainFile` call in flake.nix
+[toolchain]
+channel = "1.94.1"
+components = [
+    "clippy",
+    "rust-src",
+    "rustfmt",
+    "rust-analyzer",
+]
