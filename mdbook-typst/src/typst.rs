@@ -7,13 +7,13 @@ use normalize_path::NormalizePath;
 use typst::{
     Library, LibraryExt,
     diag::{FileError, FileResult, PackageError},
-    foundations::{Bytes, Datetime},
-    layout::PagedDocument,
-    syntax::{FileId, Source, VirtualPath, package::PackageSpec},
-    text::{Font, FontBook},
+    foundations::{Bytes, Datetime, Duration},
+    syntax::{FileId, RootedPath, Source, VirtualPath, VirtualRoot, package::PackageSpec},
+    text::{Font, FontBook, FontInfo},
     utils::LazyHash,
 };
-use typst_kit::fonts::{FontSearcher, FontSlot};
+use typst_layout::PagedDocument;
+use typst_svg::SvgOptions;
 
 use crate::download::AutoDownload;
 
@@ -26,8 +26,8 @@ pub struct MdbookWorld {
     pub book_source: PathBuf,
     auto_download: Option<AutoDownload>,
     library: LazyHash<Library>,
-    book: LazyHash<FontBook>,
-    fonts: Vec<FontSlot>,
+    font_book: LazyHash<FontBook>,
+    fonts: Vec<(Font, FontInfo)>,
     allowed_licenses: Vec<String>,
 }
 
@@ -38,15 +38,13 @@ impl MdbookWorld {
         allowed_licenses: Vec<String>,
         book_source: PathBuf,
     ) -> Self {
-        let fonts = FontSearcher::new()
-            .include_system_fonts(false)
-            .include_embedded_fonts(true)
-            .search();
+        let fonts: Vec<_> = typst_kit::fonts::embedded().collect();
+        let font_book = FontBook::from_fonts(fonts.iter().map(|(f, _)| f));
 
         let done = Self {
             library: LazyHash::new(Library::default()),
-            book: fonts.book.into(),
-            fonts: fonts.fonts,
+            fonts,
+            font_book: LazyHash::new(font_book),
             pkg_root,
             book_source,
             auto_download,
@@ -57,11 +55,17 @@ impl MdbookWorld {
     }
 
     pub fn compile(&self, source_path: &Path, source_contents: &str) -> String {
+        let source = source_path.to_string_lossy();
+        let source_path = FileId::new(RootedPath::new(
+            VirtualRoot::Project,
+            VirtualPath::new(source).unwrap(),
+        ));
+
         let world = BookWorldInner {
             pkg_root: &self.pkg_root,
             library: &self.library,
-            book: &self.book,
             fonts: &self.fonts,
+            font_book: &self.font_book,
             book_source: &self.book_source,
             auto_download: self.auto_download.as_ref(),
             allowed_licenses: &self.allowed_licenses,
@@ -72,8 +76,8 @@ impl MdbookWorld {
         let output = typst::compile::<PagedDocument>(&world);
 
         let pages = output.output.unwrap();
-        let first_page = pages.pages.first().unwrap();
-        let done = typst_svg::svg(first_page);
+        let first_page = pages.pages().first().unwrap();
+        let done = typst_svg::svg(first_page, &SvgOptions::default());
 
         done
     }
@@ -81,11 +85,11 @@ impl MdbookWorld {
 
 struct BookWorldInner<'a> {
     library: &'a LazyHash<Library>,
-    book: &'a LazyHash<FontBook>,
-    fonts: &'a Vec<FontSlot>,
+    fonts: &'a Vec<(Font, FontInfo)>,
+    font_book: &'a LazyHash<FontBook>,
     pkg_root: &'a Path,
     book_source: &'a Path,
-    source_path: &'a Path,
+    source_path: FileId,
     source_contents: &'a str,
     auto_download: Option<&'a AutoDownload>,
     allowed_licenses: &'a [String],
@@ -98,7 +102,7 @@ enum File {
 
 impl BookWorldInner<'_> {
     fn find(&self, id: FileId) -> FileResult<File> {
-        if let Some(package) = id.package() {
+        if let VirtualRoot::Package(package) = id.root() {
             let tar = self
                 .pkg_root
                 .join(rel_path(package))
@@ -109,12 +113,12 @@ impl BookWorldInner<'_> {
             }
 
             find_in_tar(&tar, package, id.vpath()).map(File::Data)
-        } else if FileId::new(None, VirtualPath::new(self.source_path)) == id {
+        } else if self.source_path == id {
             Ok(File::Source(self.source_contents.to_string()))
         } else {
             // A rootless path is always relative to the
             // compilation source
-            let file_path = id.vpath().as_rootless_path();
+            let file_path = id.vpath().get_without_slash();
             let path = self.book_source.join(file_path);
 
             // Normalize the path to ensure we're not trying
@@ -138,11 +142,11 @@ impl typst::World for BookWorldInner<'_> {
     }
 
     fn book(&self) -> &LazyHash<FontBook> {
-        &self.book
+        &self.font_book
     }
 
     fn main(&self) -> FileId {
-        FileId::new(None, VirtualPath::new(self.source_path))
+        self.source_path
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
@@ -163,10 +167,10 @@ impl typst::World for BookWorldInner<'_> {
     }
 
     fn font(&self, index: usize) -> Option<Font> {
-        self.fonts.get(index).map(|v| v.get()).flatten()
+        self.fonts.get(index).map(|(f, _)| f.clone())
     }
 
-    fn today(&self, _: Option<i64>) -> Option<Datetime> {
+    fn today(&self, _offset: Option<Duration>) -> Option<Datetime> {
         unimplemented!()
     }
 }
@@ -192,7 +196,7 @@ fn find_in_tar(tar: &Path, package: &PackageSpec, file_path: &VirtualPath) -> Fi
         let mut entry = entry.unwrap();
         let path = entry.path().unwrap();
 
-        if path == file_path.as_rootless_path() {
+        if path.as_os_str().as_encoded_bytes() == file_path.get_without_slash().as_bytes() {
             let mut output = Vec::new();
             entry.read_to_end(&mut output).unwrap();
             return Ok(output);
